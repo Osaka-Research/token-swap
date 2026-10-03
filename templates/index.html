@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Token Swap</title>
+<style>
+  :root{
+    --bg:#0d0e12; --card:#16181f; --card2:#1d2029; --ink:#eef0f5; --muted:#8a8fa3;
+    --accent:#7c5cff; --accent2:#38e5c8; --line:#2a2e3a; --danger:#ff5c72; --ok:#38e5c8;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(circle at 50% -10%, #221b3d 0%, var(--bg) 55%);
+    color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:18px 14px 60px;
+  }
+  header{width:100%; max-width:440px; display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;}
+  header .brand{font-weight:700; font-size:1.05em; letter-spacing:.02em;}
+  header .brand span{color:var(--accent2);}
+  #balancePill{
+    background:var(--card2); border:1px solid var(--line); border-radius:20px;
+    padding:6px 12px; font-size:.8em; color:var(--muted); display:flex; align-items:center; gap:6px;
+  }
+  #balancePill b{color:var(--accent2); font-size:1em;}
+
+  .card{
+    width:100%; max-width:440px; background:var(--card); border:1px solid var(--line);
+    border-radius:18px; padding:18px; margin-bottom:14px;
+  }
+  .card h2{margin:0 0 14px 0; font-size:1em; font-weight:600;}
+  .box{
+    background:var(--card2); border:1px solid var(--line); border-radius:14px; padding:14px;
+  }
+  .box .label{font-size:.72em; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.06em;}
+  select, input{
+    width:100%; background:none; border:none; color:var(--ink); font-size:1.05em;
+    font-family:inherit; padding:4px 0;
+  }
+  select:focus, input:focus{outline:none;}
+  select option{background:var(--card2); color:var(--ink);}
+  .swap-arrow{
+    display:flex; align-items:center; justify-content:center; margin:-6px 0; position:relative; z-index:2;
+  }
+  .swap-arrow span{
+    background:var(--accent); color:#fff; width:34px; height:34px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; font-size:1.1em;
+    border:4px solid var(--card);
+  }
+  .to-amount{font-size:1.4em; font-weight:700; color:var(--accent2);}
+  .rate{font-size:.75em; color:var(--muted); margin-top:10px; text-align:center;}
+  button.primary{
+    width:100%; margin-top:14px; padding:14px; border:none; border-radius:12px;
+    background:linear-gradient(90deg, var(--accent), #a78bff); color:#fff; font-size:1em; font-weight:700;
+  }
+  button.primary:disabled{opacity:.4;}
+  button.secondary{
+    width:100%; padding:12px; border-radius:10px; border:1px solid var(--line); background:none;
+    color:var(--ink); font-size:.9em; margin-top:8px;
+  }
+  .msg{font-size:.82em; margin-top:10px; padding:8px 10px; border-radius:8px; display:none;}
+  .msg.err{display:block; background:rgba(255,92,114,.12); color:var(--danger); border:1px solid rgba(255,92,114,.3);}
+  .msg.ok{display:block; background:rgba(56,229,200,.1); color:var(--ok); border:1px solid rgba(56,229,200,.3);}
+
+  .auth-tabs{display:flex; gap:6px; margin-bottom:14px;}
+  .auth-tabs button{
+    flex:1; padding:9px; border-radius:9px; border:1px solid var(--line); background:var(--card2);
+    color:var(--muted); font-size:.85em;
+  }
+  .auth-tabs button.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .field{margin-bottom:10px;}
+  .field label{font-size:.72em; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; display:block; margin-bottom:5px;}
+  .field input{background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:11px;}
+
+  .hidden{display:none !important;}
+
+  table{width:100%; border-collapse:collapse; font-size:.82em;}
+  td{padding:8px 0; border-bottom:1px solid var(--line); color:var(--muted);}
+  td.amt-credit{color:var(--ok); font-weight:600;}
+  td.amt-debit{color:var(--danger); font-weight:600;}
+  .keylist-row{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line); font-size:.85em;}
+  .keylist-row .badge{
+    font-size:.68em; padding:2px 7px; border-radius:6px; background:var(--card2); color:var(--muted);
+  }
+  .badge.live-verified{color:var(--ok);}
+  .footnote{font-size:.72em; color:var(--muted); text-align:center; margin-top:6px; line-height:1.5;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">token<span>swap</span></div>
+  <div id="balancePill" class="hidden">🪙 <b id="balanceVal">0</b> tokens</div>
+</header>
+
+<div class="card" id="authCard">
+  <div class="auth-tabs">
+    <button id="tabLogin" class="active">Log In</button>
+    <button id="tabRegister">Register</button>
+  </div>
+  <div class="field"><label>Email</label><input id="authEmail" type="email" placeholder="you@example.com"></div>
+  <div class="field"><label>Password</label><input id="authPassword" type="password" placeholder="min 8 characters"></div>
+  <button class="primary" id="authSubmit">Log In</button>
+  <div class="msg" id="authMsg"></div>
+</div>
+
+<div class="card hidden" id="swapCard">
+  <h2>Swap your API key for tokens</h2>
+
+  <div class="box">
+    <div class="label">From — your key</div>
+    <select id="providerSelect">
+      {% for id, p in providers.items() %}
+      <option value="{{ id }}">{{ p.label }}</option>
+      {% endfor %}
+    </select>
+    <input id="apiKeyInput" type="password" placeholder="Paste your API key" style="margin-top:8px;">
+  </div>
+
+  <div class="swap-arrow"><span>↓</span></div>
+
+  <div class="box">
+    <div class="label">To — platform tokens</div>
+    <div class="to-amount">{{ tokens_per_key }} tokens</div>
+  </div>
+
+  <div class="rate">Fixed rate · one credit per unique key · key encrypted at rest</div>
+
+  <button class="primary" id="swapBtn">Swap for Tokens</button>
+  <div class="msg" id="swapMsg"></div>
+
+  <div class="footnote">Your key is encrypted before storage and only used to verify it's live. We never display it again after submission.</div>
+</div>
+
+<div class="card hidden" id="keysCard">
+  <h2>Redeemed keys</h2>
+  <div id="keysList"><div class="footnote">None yet.</div></div>
+</div>
+
+<div class="card hidden" id="historyCard">
+  <h2>Transaction history</h2>
+  <table id="historyTable"><tbody></tbody></table>
+</div>
+
+<button class="secondary hidden" id="logoutBtn" style="max-width:440px;">Log out</button>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+let authMode = 'login';
+
+$('tabLogin').addEventListener('click', ()=>{ authMode='login'; $('tabLogin').classList.add('active'); $('tabRegister').classList.remove('active'); $('authSubmit').textContent='Log In'; });
+$('tabRegister').addEventListener('click', ()=>{ authMode='register'; $('tabRegister').classList.add('active'); $('tabLogin').classList.remove('active'); $('authSubmit').textContent='Create Account'; });
+
+function showMsg(el, text, ok){
+  el.textContent = text;
+  el.className = 'msg ' + (ok ? 'ok' : 'err');
+}
+
+async function api(path, opts){
+  const res = await fetch(path, Object.assign({headers:{'Content-Type':'application/json'}}, opts));
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || 'request failed');
+  return data;
+}
+
+$('authSubmit').addEventListener('click', async ()=>{
+  const email = $('authEmail').value.trim();
+  const password = $('authPassword').value;
+  try{
+    const data = await api('/api/' + (authMode==='login'?'login':'register'), {
+      method:'POST', body: JSON.stringify({email, password})
+    });
+    onLoggedIn(data.token_balance);
+  }catch(e){
+    showMsg($('authMsg'), e.message, false);
+  }
+});
+
+$('logoutBtn').addEventListener('click', async ()=>{
+  await api('/api/logout', {method:'POST'});
+  location.reload();
+});
+
+function onLoggedIn(balance){
+  $('authCard').classList.add('hidden');
+  $('swapCard').classList.remove('hidden');
+  $('keysCard').classList.remove('hidden');
+  $('historyCard').classList.remove('hidden');
+  $('logoutBtn').classList.remove('hidden');
+  $('balancePill').classList.remove('hidden');
+  $('balanceVal').textContent = balance;
+  loadKeys();
+  loadHistory();
+}
+
+$('swapBtn').addEventListener('click', async ()=>{
+  const provider = $('providerSelect').value;
+  const api_key = $('apiKeyInput').value.trim();
+  if(!api_key){ showMsg($('swapMsg'), 'Paste an API key first.', false); return; }
+  $('swapBtn').disabled = true;
+  $('swapBtn').textContent = 'Verifying...';
+  try{
+    const data = await api('/api/keys/submit', {method:'POST', body: JSON.stringify({provider, api_key})});
+    $('apiKeyInput').value = '';
+    $('balanceVal').textContent = data.token_balance;
+    showMsg($('swapMsg'), `Swapped! +${data.credited} tokens (${data.validated}).`, true);
+    loadKeys();
+    loadHistory();
+  }catch(e){
+    showMsg($('swapMsg'), e.message, false);
+  }finally{
+    $('swapBtn').disabled = false;
+    $('swapBtn').textContent = 'Swap for Tokens';
+  }
+});
+
+async function loadKeys(){
+  const keys = await api('/api/keys');
+  const el = $('keysList');
+  if(keys.length === 0){ el.innerHTML = '<div class="footnote">None yet.</div>'; return; }
+  el.innerHTML = keys.map(k=>`
+    <div class="keylist-row">
+      <span>${k.provider} ····${k.last4}</span>
+      <span class="badge ${k.validated}">${k.validated}</span>
+      <span>+${k.credited_tokens}</span>
+    </div>`).join('');
+}
+
+async function loadHistory(){
+  const rows = await api('/api/transactions');
+  const tbody = document.querySelector('#historyTable tbody');
+  tbody.innerHTML = rows.map(r=>`
+    <tr>
+      <td>${new Date(r.created_at*1000).toLocaleDateString()}</td>
+      <td>${r.reason}</td>
+      <td class="amt-${r.kind}">${r.kind==='credit'?'+':'-'}${r.amount}</td>
+    </tr>`).join('');
+}
+
+(async function init(){
+  try{
+    const me = await api('/api/me');
+    if(me.logged_in) onLoggedIn(me.token_balance);
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
